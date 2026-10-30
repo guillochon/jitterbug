@@ -201,6 +201,7 @@ static ControlHandle gButtons[kNumButtons];
 static void        (*gActions[kNumButtons])(void) = { FlipCoin, RollDie, MakeKey, MakePassword };
 static char          gStatus[128];
 static Boolean       gReady;
+static Boolean       gActive = true;   /* window is frontmost */
 static Rect          gResultBox, gDetailBox, gStatusBox;
 
 static void DrawBox(const char *text, const Rect *box, short font, short size, short just)
@@ -223,19 +224,25 @@ static void DrawContent(void)
     DrawBox(gStatus, &gStatusBox, 3, 9, teFlushLeft);
 }
 
+/* Buttons work only while the extension is ready and the window is in front. */
+static void HiliteButtons(void)
+{
+    int i;
+    for (i = 0; i < kNumButtons; i++)
+        HiliteControl(gButtons[i], (gReady && gActive) ? 0 : 255);
+}
+
 /* Refresh the status line, and dim the buttons while there is nothing to
  * give. Only redraws when something changed, so the window doesn't flicker. */
 static void PollStatus(void)
 {
     char line[sizeof gStatus];
     Boolean ready = DescribeStatus(line);
-    int i;
     if (ready == gReady && strcmp(line, gStatus) == 0) return;
     strcpy(gStatus, line);
     if (ready != gReady) {
         gReady = ready;
-        for (i = 0; i < kNumButtons; i++)
-            HiliteControl(gButtons[i], ready ? 0 : 255);
+        HiliteButtons();
     }
     SetPort(gWin);
     InvalRect(&gStatusBox);
@@ -356,6 +363,12 @@ int main(void)
             case keyDown:
                 if (ev.modifiers & cmdKey)
                     running = DoMenu(MenuKey((char)(ev.message & charCodeMask)));
+                break;
+            case activateEvt:
+                if ((WindowPtr)ev.message == gWin) {
+                    gActive = (ev.modifiers & activeFlag) != 0;
+                    HiliteButtons();
+                }
                 break;
             case updateEvt:
                 if ((WindowPtr)ev.message == gWin) {
