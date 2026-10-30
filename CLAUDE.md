@@ -14,7 +14,13 @@ makes the app supply a seed. See docs/PRIOR_ART.md before proposing designs.
   PPC and 68K with the Retro68 Docker image (GCC 16.1, Multiversal). Multiversal
   lacks `Microseconds`/`UnsignedWide`; the collector declares its own (`JBWide`,
   InterfaceLib on PPC, trap 0xA193 on 68K). Next: run it on the B&W.
-- M2+ not started. See docs/ARCHITECTURE.md.
+- M2 not started (more sources in the collector app).
+- M3 BUILDS, NEVER BOOTED: the extension is one 68K INIT (`mac/init/`) with a
+  Gestalt 'JBug' API; apps compile in `mac/sdk/` (glue uses Mixed Mode on PPC).
+  `mac/jbtest/` exercises it. Next: boot it with `scripts/test-qemu-os9.sh`,
+  then on the B&W. Its samples are Microseconds-based (68K has no `mftb`), so
+  they need their own measurements; JBStatus always reports placeholder credits.
+- M4/M5 not started beyond the SDK. See docs/ARCHITECTURE.md.
 
 ## Commands
 - Host build + tests: `scripts/test-host.sh`
@@ -24,11 +30,18 @@ makes the app supply a seed. See docs/PRIOR_ART.md before proposing designs.
 - Deploy to the B&W: `JB_MAC_IP=x.x.x.x scripts/deploy.sh`
 - Entropy assessment of a hardware trace: `scripts/assess.sh trace.jbr`
 - Regenerate icons after editing the ASCII art: `python3 mac/resources/icon/make_icons.py`
+- Extension: `scripts/build-mac.sh 68k` → `build-mac-68k/mac/Jitterbug.{bin,dsk}`
+- Boot test in QEMU (Docker): `scripts/test-qemu-os9.sh install ISO` once
+  (the base disk must be Mac OS Standard), then `scripts/test-qemu-os9.sh run`
+  (add `--stimulus` to type host-timed keys so it can seed headless).
+  Emulator runs are crash tests only, never entropy evidence (rule 3).
 
 ## Layout
 - `include/`, `core/` — portable engine. Compiled for host AND Mac.
 - `sim/`, `tools/`, `tests/` — host only. `sim/` must never be linked into a Mac target.
 - `mac/` — Retro68 targets (only configured when a Retro68 toolchain is active).
+  `mac/sdk/` is the public API apps copy in; `mac/demo/` (JitterbugDemo) is
+  the push-button example of using it, `mac/jbtest/` the automated check.
   `mac/resources/` holds the generated icon family; the app's creator code is
   `JtBg` (`mac/CMakeLists.txt` and `mac/collector/collector.r` must agree).
   Retro68 never sets the Finder bundle bit; `scripts/mac-set-bundle-bit.py`
@@ -73,4 +86,4 @@ MIT (`LICENSE`). If code is ever adapted from prior-art projects (MIT/GPL),
 keep their notices; GPL code cannot be copied in.
 
 ## Open decisions for the owner
-- INIT + shared library vs. ndrv driver for the system-wide component.
+- (Decided 2026-10-30: 68K INIT + Gestalt API, not a CFM library or ndrv.)

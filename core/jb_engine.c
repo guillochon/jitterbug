@@ -59,6 +59,23 @@ static void absorb(jb_engine *e, const jb_sample *s)
     jb_pool_add(&e->pool, rec, sizeof rec, credit);
 }
 
+void jb_engine_add_sample(jb_engine *e, jb_u8 src, jb_u32 ts, jb_u32 value)
+{
+    jb_sample s;
+    s.source = src;
+    s.flags = 0;
+    s.ts = ts;
+    s.value = value;
+    absorb(e, &s);
+}
+
+void jb_engine_stir(jb_engine *e, const void *data, size_t len)
+{
+    jb_u8 tag = 0xFE;
+    jb_pool_add(&e->pool, &tag, 1, 0);
+    jb_pool_add(&e->pool, data, len, 0);
+}
+
 jb_u32 jb_engine_pump(jb_engine *e)
 {
     jb_sample s;

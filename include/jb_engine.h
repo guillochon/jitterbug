@@ -35,6 +35,12 @@ void jb_engine_init(jb_engine *e);
 void jb_engine_config_source(jb_engine *e, jb_u8 src, const jb_source_cfg *c);
 /* Mix a persisted seed file. Never credited: it may be stale or copied. */
 void jb_engine_mix_seedfile(jb_engine *e, const void *data, size_t len);
+/* Task time only: absorb one sample now, bypassing the ring. For producers
+ * that already run at task time (the INIT's event filter), so the ring keeps
+ * its single, interrupt-time producer. Seeding still happens in pump. */
+void   jb_engine_add_sample(jb_engine *e, jb_u8 src, jb_u32 ts, jb_u32 value);
+/* Mix caller-supplied bytes (JBStir). Never credited. */
+void   jb_engine_stir(jb_engine *e, const void *data, size_t len);
 /* Task time: drain the ring, test, mix, (re)seed. Returns samples drained. */
 jb_u32 jb_engine_pump(jb_engine *e);
 int    jb_engine_ready(const jb_engine *e);

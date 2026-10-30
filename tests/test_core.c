@@ -6,6 +6,8 @@
 #include "jb_health.h"
 #include "jb_sample.h"
 #include "jb_pool.h"
+#include "jb_engine.h"
+#include "jb_policy.h"
 
 static int fails = 0;
 #define CHECK(c, msg) do { if (!(c)) { printf("FAIL: %s\n", msg); fails++; } else printf("ok:   %s\n", msg); } while (0)
@@ -122,9 +124,34 @@ static void test_pool(void)
     CHECK(memcmp(a, b, 32) != 0, "successive extracts differ");
 }
 
+static void test_engine_direct(void)
+{
+    static jb_engine e; jb_u8 out[32]; jb_u32 i, x = 12345;
+    jb_engine_init(&e);
+    jb_policy_apply_defaults(&e);
+    for (i = 0; i < 4096; i++) jb_engine_stir(&e, "stir", 4);
+    jb_engine_pump(&e);
+    CHECK(!jb_engine_ready(&e) && jb_engine_random(&e, out, 32) == JB_ERR_NOT_READY,
+          "stirred bytes earn no credit");
+    for (i = 0; i < 4096; i++) jb_engine_add_sample(&e, JB_SRC_EVENT, i * 1000u, 0);
+    jb_engine_pump(&e);
+    CHECK(!jb_engine_ready(&e), "constant-interval direct samples never seed");
+    jb_engine_init(&e);
+    jb_policy_apply_defaults(&e);
+    for (i = 0; i < 4096; i++) {
+        x = x * 1103515245u + 12345u;     /* varied intervals, test only */
+        jb_engine_add_sample(&e, JB_SRC_EVENT, i * 1000u + (x >> 16), 0);
+    }
+    CHECK(!jb_engine_ready(&e), "direct samples alone do not seed before pump");
+    jb_engine_pump(&e);
+    CHECK(jb_engine_ready(&e) && jb_engine_random(&e, out, 32) == JB_OK,
+          "varied direct samples seed after pump");
+}
+
 int main(void)
 {
     test_sha256(); test_hmac(); test_drbg(); test_health(); test_ring(); test_pool();
+    test_engine_direct();
     printf("\n%s (%d failure%s)\n", fails ? "FAILED" : "ALL PASSED", fails, fails == 1 ? "" : "s");
     return fails ? 1 : 0;
 }

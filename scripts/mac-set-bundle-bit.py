@@ -15,6 +15,7 @@ import os
 import shutil
 import struct
 import subprocess
+import tempfile
 import sys
 
 K_HAS_BUNDLE = 0x2000
@@ -58,14 +59,19 @@ def patch_disk_image(dsk, binfile, name):
     if not shutil.which("hcopy"):
         print("hfsutils not found; %s keeps the bundle bit clear" % dsk)
         return
-    def run(*args):
-        subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
-    run("hmount", dsk)
-    try:
-        run("hdel", ":" + name)
-        run("hcopy", "-m", binfile, ":" + name)
-    finally:
-        run("humount")
+    # hfsutils keeps the mounted volume in $HOME/.hcwd; parallel builds of
+    # several apps would trample each other's, so give each run its own.
+    with tempfile.TemporaryDirectory() as home:
+        env = dict(os.environ, HOME=home)
+        def run(*args, check=True):
+            subprocess.run(args, check=check, stdout=subprocess.DEVNULL,
+                           stderr=subprocess.DEVNULL if not check else None, env=env)
+        run("hmount", dsk)
+        try:
+            run("hdel", ":" + name, check=False)   # absent after an interrupted run
+            run("hcopy", "-m", binfile, ":" + name)
+        finally:
+            run("humount")
 
 
 def main():
