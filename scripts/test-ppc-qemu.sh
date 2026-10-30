@@ -3,6 +3,9 @@
 # B&W's G3 CPU) using a Linux PPC32 cross-compiler and qemu-user. This catches
 # endianness and 32-bit bugs before touching real hardware. It does NOT test
 # Mac OS APIs. Debian/Ubuntu: apt install gcc-powerpc-linux-gnu qemu-user
+# Use Ubuntu 22.04 (glibc 2.35), where both suites pass. Debian 12's cross
+# glibc puts a POWER9-only instruction (mffscrni) in cos(), so test_sim dies
+# with SIGILL under -cpu 750; that is the toolchain, not Jitterbug.
 set -euo pipefail
 source "$(dirname "$0")/common.sh"
 CC=powerpc-linux-gnu-gcc

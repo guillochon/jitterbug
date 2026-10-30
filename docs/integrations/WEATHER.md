@@ -1,7 +1,8 @@
 # Integrating Jitterbug with Weather ("What It Be Like?")
 
 Status: proposal, 2026-10-30. Nothing here is implemented in Weather. On the
-Jitterbug side the extension and SDK build but have not yet been booted.
+Jitterbug side the extension, SDK and a demo app work in QEMU (Mac OS 9.2.2,
+`mac99`) but have not yet run on real hardware.
 Written for the maintainers of [jackwillis/weather](https://github.com/jackwillis/weather)
 after reading their seed design at `main` (`docs/OS9-SEEDS.md`,
 `docs/OS9-ENTROPY-MEASUREMENT.md`, issues #120, #121, #193, #197).
@@ -23,10 +24,12 @@ to any app. Its current state:
 | Piece | State |
 |---|---|
 | Portable engine (C89): SHA-256 pool, HMAC-DRBG (SP 800-90A), SP 800-90B repetition-count and adaptive-proportion health tests, interrupt-safe ring | done; tested on x86 and big-endian PPC 750 under qemu |
-| Host simulator, including an `emulator` profile that must never seed | done |
+| Host simulator, with a modelled `emulator` profile that never seeds | done (but see the QEMU row) |
 | JitterbugCollector (raw `.jbr` trace capture app) | builds with Retro68; not yet run on hardware |
-| System-wide extension (68K INIT) and public API (`mac/sdk`) | builds; not yet booted in an emulator or on hardware |
-| Entropy credits per source | placeholders; zero evidence yet |
+| System-wide extension (68K INIT) and public API (`mac/sdk`) | boots in QEMU: installs, seeds, serves random bytes to a PowerPC app through Mixed Mode, carries its seed file across boots; not yet run on hardware |
+| JitterbugDemo (`mac/demo`): a small app showing the API (coin, die, key, password) | builds; written as code to copy from |
+| QEMU boot test (`scripts/test-qemu-os9.sh`) | automated: installs the build, boots headless, reads the logs back |
+| Entropy credits per source | placeholders; zero evidence yet. Under QEMU the placeholder credits were enough to seed from timer jitter alone, which is exactly why they must be replaced by native measurements before anyone relies on the output |
 
 Jitterbug's rules match Weather's: credit only from native OS 9 measurements
 (never Classic or emulators); fail closed when not seeded; never credit seed
