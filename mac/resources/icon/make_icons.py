@@ -11,8 +11,8 @@ of truth. Outputs:
   mac/resources/icon/preview/      enlarged PNGs and an animated GIF (host
                                    only, needs Pillow)
 
-Resource IDs: 128 is the Finder icon family (dance frame A). 'ICN#' 129-130
-are frames A/B for animating the icon in the startup parade.
+Resource IDs: 128 is the Finder icon family (dance frame A). 'ICN#'/'icl8'/
+'icl4' 129-130 are frames A/B for animating the icon in the startup parade.
 
 Usage: python3 mac/resources/icon/make_icons.py
 """
@@ -249,10 +249,14 @@ def write_rez(large, small):
         rez_data("ics#", 128, "Jitterbug", pack_bits(one_bit(small)) + pack_bits(mask_of(small))),
         rez_data("ics8", 128, "Jitterbug", eight_bit(small, clut)),
         rez_data("ics4", 128, "Jitterbug", four_bit(small)),
-        "/* Startup-parade dance frames (1-bit, as ShowInitIcon-style code draws them). */\n",
-        rez_data("ICN#", 129, "Dance A", pack_bits(one_bit(a)) + pack_bits(mask_of(a))),
-        rez_data("ICN#", 130, "Dance B", pack_bits(one_bit(b)) + pack_bits(mask_of(b))),
+        "/* Startup-parade dance frames; PlotIconID picks the depth. */\n",
     ]
+    for rid, name, img in ((129, "Dance A", a), (130, "Dance B", b)):
+        parts += [
+            rez_data("ICN#", rid, name, pack_bits(one_bit(img)) + pack_bits(mask_of(img))),
+            rez_data("icl8", rid, name, eight_bit(img, clut)),
+            rez_data("icl4", rid, name, four_bit(img)),
+        ]
     with open(REZ_OUT, "w", newline="\n") as f:
         f.write("\n".join(parts))
 

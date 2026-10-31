@@ -37,6 +37,8 @@
 #define kIconDanceB       130
 #define kTransformDimmed  1
 #define kExtendedTimeMgr  3          /* gestaltExtendedTimeMgr (InsXTime) */
+#define kQDVersion        0x71642020 /* gestaltQuickdrawVersion 'qd  '    */
+#define kColorQD          0x0100     /* gestalt8BitQD                     */
 
 static const unsigned char kSeedName[] = "\pJitterbug Seed";
 static const unsigned char kLogName[]  = "\pJitterbug Log";
@@ -304,20 +306,27 @@ static short parade_checksum(short h)
     return (short)((((unsigned short)h << 1) | ((unsigned short)h >> 15)) ^ 0x1021);
 }
 
+/* PlotIconID draws the deepest icon the port can show, and a plain GrafPort
+ * is 1-bit, so use a CGrafPort whenever Color QuickDraw is present. */
 static void plot_parade(short iconID, short transform, int advance)
 {
     struct { QDGlobals qd; long a5slot; } g;
-    GrafPort port;
-    long oldA5;
+    union { GrafPort bw; CGrafPort color; } port;
+    long oldA5, qdVersion;
+    int color;
     short *hp = (short *)kLMShowINITH;
     short h;
     Rect r;
 
+    color = Gestalt((OSType)kQDVersion, &qdVersion) == noErr && qdVersion >= kColorQD;
     oldA5 = SetA5((long)&g.a5slot);
     InitGraf(&g.qd.thePort);
-    OpenPort(&port);
+    if (color)
+        OpenCPort(&port.color);
+    else
+        OpenPort(&port.bw);
     h = (*(short *)kLMShowINITCheck == parade_checksum(*hp)) ? *hp : 8;
-    r.bottom = port.portRect.bottom - 8;
+    r.bottom = g.qd.thePort->portRect.bottom - 8;
     r.top = r.bottom - 32;
     r.left = h;
     r.right = h + 32;
@@ -326,7 +335,10 @@ static void plot_parade(short iconID, short transform, int advance)
         *hp = (short)(h + 40);
         *(short *)kLMShowINITCheck = parade_checksum(*hp);
     }
-    ClosePort(&port);
+    if (color)
+        CloseCPort(&port.color);
+    else
+        ClosePort(&port.bw);
     SetA5(oldA5);
 }
 

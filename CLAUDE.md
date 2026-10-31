@@ -27,6 +27,7 @@ makes the app supply a seed. See docs/PRIOR_ART.md before proposing designs.
 - Same tests big-endian on an emulated G3 (PPC 750): `scripts/test-ppc-qemu.sh` (Linux)
 - Simulator: `build-host/jb_sim list | run -p bw-g3-active | dump | replay`
 - Mac build (Docker image by default, or set RETRO68_TOOLCHAIN): `scripts/build-mac.sh ppc`
+- Try it by hand in a QEMU window (Linux/WSL, native QEMU + hfsutils): `scripts/play-qemu-os9.sh [--fresh]`
 - Deploy to the B&W: `JB_MAC_IP=x.x.x.x scripts/deploy.sh`
 - Entropy assessment of a hardware trace: `scripts/assess.sh trace.jbr`
 - Regenerate icons after editing the ASCII art: `python3 mac/resources/icon/make_icons.py`
