@@ -5,6 +5,11 @@
 #
 #   scripts/play-qemu-os9.sh           # reuse play.img, keeping your changes
 #   scripts/play-qemu-os9.sh --fresh   # rebuild play.img from the base disk
+#   scripts/play-qemu-os9.sh --fresh --no-launch   # rebuild only
+#
+# Under WSL the mouse misbehaves (WSLg cannot lock the pointer, so the guest
+# cursor resets at the window edge); on Windows use play-qemu-os9.ps1, which
+# builds play.img through this script and boots it in native Windows QEMU.
 #
 # play.img is a copy of the base disk made by `test-qemu-os9.sh install`, with
 # the Jitterbug extension in Extensions and JitterbugDemo + JitterbugTest in a
@@ -21,11 +26,21 @@ PLAY="$QDIR/play.img"
 INIT="$JB_ROOT/build-mac-68k/mac/Jitterbug.bin"
 APPS="$JB_ROOT/build-mac-ppc/mac"
 
-command -v qemu-system-ppc >/dev/null && command -v hmount >/dev/null || {
-    echo "needs qemu-system-ppc and hfsutils (sudo apt-get install qemu-system-ppc hfsutils)"; exit 2; }
+fresh=0 launch=1
+for arg in "$@"; do
+    case "$arg" in
+        --fresh) fresh=1 ;;
+        --no-launch) launch=0 ;;
+        *) echo "unknown option: $arg"; exit 2 ;;
+    esac
+done
+command -v hmount >/dev/null || { echo "needs hfsutils (sudo apt-get install hfsutils)"; exit 2; }
+if ((launch)) && ! command -v qemu-system-ppc >/dev/null; then
+    echo "needs qemu-system-ppc (sudo apt-get install qemu-system-ppc)"; exit 2
+fi
 [[ -f "$BASE" ]] || { echo "no base disk at $BASE; run: scripts/test-qemu-os9.sh install ISO"; exit 2; }
 
-if [[ "${1:-}" == "--fresh" || ! -f "$PLAY" ]]; then
+if ((fresh)) || [[ ! -f "$PLAY" ]]; then
     [[ -f "$INIT" ]] || { echo "missing $INIT; run: scripts/build-mac.sh 68k"; exit 2; }
     [[ -f "$APPS/JitterbugDemo.bin" ]] || { echo "missing $APPS/JitterbugDemo.bin; run: scripts/build-mac.sh ppc"; exit 2; }
     echo "building $PLAY"
@@ -39,5 +54,6 @@ if [[ "${1:-}" == "--fresh" || ! -f "$PLAY" ]]; then
     humount
 fi
 
+((launch)) || exit 0
 exec qemu-system-ppc -M mac99,via=pmu -m 512 -g 1024x768x32 \
     -drive file="$PLAY",format=raw,media=disk -boot c -name Jitterbug

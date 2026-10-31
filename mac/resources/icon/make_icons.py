@@ -45,66 +45,70 @@ COLORS = {
 # 32x32 dance frame A, a figeater beetle from behind: left foreleg raised,
 # left hind leg kicked out. Frame B is the mirror image.
 BUG_LARGE = [
-    ".k...k.....k.....",
-    "..k...k...k......",
-    "..k....kkk.......",
-    "...k..kdGdk......",
-    "....kkGlGGGk..k..",
-    ".....kGlGGGGkk...",
-    "....kdGGGGGdk....",
-    "...kyggdddggyk...",
-    ".kkkyGggdggGykkk.",
-    "k..kyGggdggGyk..k",
-    "...kygggdgggyk...",
-    "k..kygggdgggyk...",
-    ".kkkkyggdggykk...",
-    ".....kygdgyk.k...",
-    "......kkkkk...k..",
+    "..k....k...k.......",
+    "..k.....k.k........",
+    "...k...kdGdk....k..",
+    "...k..kGlGGGk..k...",
+    "....kkGlGGGGGkk....",
+    "....kGlGGGGGGGk....",
+    "...kdGGGGGGGGGdk...",
+    "..kyggggdddggggyk..",
+    "kkkyGggggdggggGykkk",
+    "k.kyGggggdggggGyk.k",
+    "..kyGggggdggggGyk..",
+    "..kygggggdgggggyk..",
+    "..kygggggdgggggyk..",
+    "kkkygggggdgggggyk..",
+    "..kygggggdgggggykk.",
+    "...kyggggdggggyk.k.",
+    "....kygggdgggyk..k.",
+    ".....kyggdggyk....k",
+    "......kkkkkkk......",
 ]
 
-# 16x16 is too small to shade procedurally, so it is drawn whole.
+# 16x16 is too small to shade procedurally, so it is drawn whole, in the same
+# shape as the large piece: dovetail socket on the left, tab on the right.
 ICON_SMALL = [
-    "......kkkk......",
-    ".....khhhPk.....",
-    ".....khPPSk.....",
-    ".kkkkkkPSkkkkk..",
-    ".khhhhhhhhhhPk..",
-    ".khPkPkkkPkPPkkk",
-    ".khPPkGlGkPPPkhk",
-    ".khPkkgdgkkPPPSk",
-    ".khPPkgdgkPPPSSk",
-    ".khPkkgdgkkPPkkk",
-    ".khPPkydykPPPk..",
-    ".khPPPkkkPPPSk..",
-    ".khPPPPPPPPPSk..",
-    ".khPPPPPPPPSSk..",
-    ".kPSSSSSSSSSSk..",
-    ".kkkkkkkkkkkkk..",
+    "kkkkkkkkkkkkk...",
+    "khhhhhhhhhhhk...",
+    "khPPPPPPPPPSk...",
+    "khPPPPPPPPPSk...",
+    "khPkPkkkPkPSk...",
+    "kkPPkGlGkPPSk.kk",
+    "k.kkkgdgkkPSSkSk",
+    "..kPkgdgkPPSSSSk",
+    "..kkkgdgkkPSSSSk",
+    "k.kPkydykPPSSkSk",
+    "kkhPPkkkPPPSk.kk",
+    "khPPPPPPPPPSk...",
+    "khPPPPPPPPPSk...",
+    "khPPPPPPPPSSk...",
+    "kPSSSSSSSSSSk...",
+    "kkkkkkkkkkkkk...",
 ]
 
 # Motion lines beside the raised foreleg and kicking hind leg: (x, y, length)
-# in 32x32 space. Frame B mirrors them about the body's centre column.
-MOTION_LARGE = [(4, 12, 2), (4, 14, 2), (4, 23, 2), (4, 25, 2)]
-MIRROR_X = 28
+# in 32x32 space. Frame B mirrors them about MIRROR_X, which also centres the
+# bug on the part of the body the socket leaves.
+MOTION_LARGE = [(4, 5, 2), (4, 7, 2), (3, 24, 2), (3, 26, 2)]
+MIRROR_X = 30
+BUG_Y = 6
 
 
 def puzzle_mask(size):
-    """Puzzle piece: tabs on top and right, a socket in the bottom."""
-    s = size / 32.0
-    x0, y0, x1, y1 = 2 * s, 7 * s, 25 * s, 30 * s   # body, inclusive-ish
-    top = (14.0 * s, 4.0 * s, 3.8 * s)
-    right = (27.5 * s, 18.5 * s, 3.8 * s)
-    sock = (14.0 * s, 32.0 * s, 3.8 * s)
-
-    def inside(px, py):
-        cx, cy = px + 0.5, py + 0.5
-        def circ(c):
-            return (cx - c[0]) ** 2 + (cy - c[1]) ** 2 <= c[2] ** 2
-        body = x0 <= cx <= x1 + 1 and y0 <= cy <= y1 + 1
-        if circ(sock):
-            return False
-        return body or circ(top) or circ(right)
-
+    """Puzzle piece in Apple's extension-icon proportions (measured from the
+    Mac OS 9.2 startup parade): a nearly full-size square body with a dovetail
+    socket in the left side and a matching dovetail tab on the right, each
+    narrow at the body edge and flaring by a pixel a column, then straight."""
+    s = size // 32
+    flare = [0, 1, 2, 2]                       # by depth into the nub
+    def inside(x, y):
+        x, y = x // s, y // s
+        if 0 <= x <= 3 and 13 - flare[x] <= y <= 20 + flare[x]:
+            return False                       # left socket
+        if 28 <= x <= 31:
+            return 13 - flare[x - 28] <= y <= 20 + flare[x - 28]
+        return 0 <= x <= 27 and 0 <= y <= 31
     return [[inside(x, y) for x in range(size)] for y in range(size)]
 
 
@@ -147,7 +151,7 @@ def draw_large(frame):
             x = MIRROR_X - x - (n - 1)
         for i in range(n):
             img[y][x + i] = "m"
-    stamp(img, bug, (MIRROR_X - 16) // 2, 10)
+    stamp(img, bug, (MIRROR_X - len(bug[0]) + 1) // 2, BUG_Y)
     return img
 
 
