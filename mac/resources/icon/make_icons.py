@@ -1,18 +1,22 @@
 #!/usr/bin/env python3
-"""Generate Jitterbug's Finder icon family and startup-parade frames.
+"""Generate Jitterbug's Finder icon families and startup-parade frames.
 
-Classic Mac OS extension style: a puzzle piece with a pixel-art bug dancing
-on it. Everything is drawn from the ASCII art below, then quantised to the
-standard Mac 8-bit and 4-bit system palettes, so the art is the single source
-of truth. Outputs:
+The extension is a classic Mac OS extension icon: a puzzle piece with a
+pixel-art bug dancing on it. The applications get application icons instead:
+the bug on the tilted diamond of the generic application icon, with a badge
+saying which app it is. Everything is drawn from the ASCII art below, then
+quantised to the standard Mac 8-bit and 4-bit system palettes, so the art is
+the single source of truth. Outputs (raw 'ICN#' 'icl8' 'icl4' 'ics#' 'ics8'
+'ics4' data; no Rez headers needed):
 
-  mac/resources/JitterbugIcons.r   raw 'ICN#' 'icl8' 'icl4' 'ics#' 'ics8'
-                                   'ics4' data; no Rez headers needed
+  mac/resources/JitterbugIcons.r   the extension
+  mac/resources/<App>Icons.r       one per application (see APPS)
   mac/resources/icon/preview/      enlarged PNGs and an animated GIF (host
                                    only, needs Pillow)
 
-Resource IDs: 128 is the Finder icon family (dance frame A). 'ICN#'/'icl8'/
-'icl4' 129-130 are frames A/B for animating the icon in the startup parade.
+Resource IDs: 128 is each file's Finder icon family. In JitterbugIcons.r,
+'ICN#'/'icl8'/'icl4' 129-130 are the extension's dance frames A/B for
+animating its icon in the startup parade.
 
 Usage: python3 mac/resources/icon/make_icons.py
 """
@@ -40,6 +44,9 @@ COLORS = {
     "d": (0x00, 0x66, 0x00),  # elytral suture and scutellum
     "y": (0xCC, 0x99, 0x33),  # tan elytral margin
     "m": (0x33, 0x33, 0x66),  # motion lines
+    # Application badges.
+    "c": (0x00, 0xCC, 0x00),  # checkmark
+    "w": (0xFF, 0xFF, 0xFF),  # stopwatch face
 }
 
 # 32x32 dance frame A, a figeater beetle from behind: left foreleg raised,
@@ -87,6 +94,64 @@ ICON_SMALL = [
     "kkkkkkkkkkkkk...",
 ]
 
+# The 16x16 bug, cut from ICON_SMALL, for the application icons.
+BUG_SMALL = [
+    "k.kkk.k",
+    ".kGlGk.",
+    "kkgdgkk",
+    ".kgdgk.",
+    "kkgdgkk",
+    ".kydyk.",
+    "..kkk..",
+]
+
+# Application badges, stamped over the bottom-right of the diamond.
+CHECK_LARGE = [
+    "........kk",
+    ".......kck",
+    "......kcck",
+    "kk...kcck.",
+    "kck.kcck..",
+    "kcckcck...",
+    ".kccck....",
+    "..kck.....",
+    "...k......",
+]
+CHECK_SMALL = [      # no room for an outline; dark green stays black in 1-bit
+    "....d",
+    "...dd",
+    "d.dd.",
+    "ddd..",
+    ".d...",
+]
+WATCH_LARGE = [
+    "...kkk...",
+    "....k....",
+    "..kkkkk..",
+    ".kwwwwwk.",
+    "kwwwkwwwk",
+    "kwwwkwwwk",
+    "kwwwkkwwk",
+    "kwwwwwwwk",
+    ".kwwwwwk.",
+    "..kkkkk..",
+]
+WATCH_SMALL = [
+    "..k..",
+    ".kkk.",
+    "kwkwk",
+    "kwwwk",
+    ".kkk.",
+]
+
+# Applications: icon file name -> (large badge, small badge). The creator
+# codes that bind them live in each app's .r file and mac/CMakeLists.txt.
+APPS = {
+    "DemoIcons": (None, None),
+    "TestIcons": (CHECK_LARGE, CHECK_SMALL),
+    "CollectorIcons": (WATCH_LARGE, WATCH_SMALL),
+}
+
 # Motion lines beside the raised foreleg and kicking hind leg: (x, y, length)
 # in 32x32 space. Frame B mirrors them about MIRROR_X, which also centres the
 # bug on the part of the body the socket leaves.
@@ -110,6 +175,13 @@ def puzzle_mask(size):
             return 13 - flare[x - 28] <= y <= 20 + flare[x - 28]
         return 0 <= x <= 27 and 0 <= y <= 31
     return [[inside(x, y) for x in range(size)] for y in range(size)]
+
+
+def diamond_mask(size):
+    """The generic application icon: a square standing on its corner."""
+    c = (size - 1) / 2.0
+    return [[abs(x - c) + abs(y - c) <= c + 0.5 for x in range(size)]
+            for y in range(size)]
 
 
 def shade_piece(mask):
@@ -159,6 +231,15 @@ def draw_small():
     return [[None if ch == "." else ch for ch in row] for row in ICON_SMALL]
 
 
+def draw_app(size, badge):
+    img = shade_piece(diamond_mask(size))
+    bug = BUG_LARGE if size == 32 else BUG_SMALL
+    stamp(img, bug, (size - len(bug[0])) // 2, (size - len(bug)) // 2)
+    if badge:
+        stamp(img, badge, size - len(badge[0]), size - len(badge))
+    return img
+
+
 # ---------------------------------------------------------------- palettes
 
 def mac_clut8():
@@ -183,7 +264,7 @@ CLUT4 = [
 # Hand-picked 4-bit mapping: nearest-colour sends the lavender body to grey,
 # which is right, but keeps the bug green and the cheeks pink.
 MAP4 = {"k": 15, "P": 12, "H": 0, "h": 0, "S": 13, "G": 8, "l": 8, "g": 8,
-        "d": 9, "y": 11, "m": 14}
+        "d": 9, "y": 11, "m": 14, "c": 8, "w": 0}
 
 
 def nearest(pal, rgb):
@@ -242,17 +323,30 @@ def rez_data(rtype, rid, name, data):
     return "\n".join(lines)
 
 
+HEADER = "/* Generated by mac/resources/icon/make_icons.py. Do not edit. */\n"
+
+
+def icon_family(name, large, small):
+    clut = mac_clut8()
+    return [
+        rez_data("ICN#", 128, name, pack_bits(one_bit(large)) + pack_bits(mask_of(large))),
+        rez_data("icl8", 128, name, eight_bit(large, clut)),
+        rez_data("icl4", 128, name, four_bit(large)),
+        rez_data("ics#", 128, name, pack_bits(one_bit(small)) + pack_bits(mask_of(small))),
+        rez_data("ics8", 128, name, eight_bit(small, clut)),
+        rez_data("ics4", 128, name, four_bit(small)),
+    ]
+
+
+def write_file(path, parts):
+    with open(path, "w", newline="\n") as f:
+        f.write("\n".join(parts))
+
+
 def write_rez(large, small):
     clut = mac_clut8()
     a, b = large
-    parts = [
-        "/* Generated by mac/resources/icon/make_icons.py. Do not edit. */\n",
-        rez_data("ICN#", 128, "Jitterbug", pack_bits(one_bit(a)) + pack_bits(mask_of(a))),
-        rez_data("icl8", 128, "Jitterbug", eight_bit(a, clut)),
-        rez_data("icl4", 128, "Jitterbug", four_bit(a)),
-        rez_data("ics#", 128, "Jitterbug", pack_bits(one_bit(small)) + pack_bits(mask_of(small))),
-        rez_data("ics8", 128, "Jitterbug", eight_bit(small, clut)),
-        rez_data("ics4", 128, "Jitterbug", four_bit(small)),
+    parts = [HEADER] + icon_family("Jitterbug", a, small) + [
         "/* Startup-parade dance frames; PlotIconID picks the depth. */\n",
     ]
     for rid, name, img in ((129, "Dance A", a), (130, "Dance B", b)):
@@ -261,11 +355,16 @@ def write_rez(large, small):
             rez_data("icl8", rid, name, eight_bit(img, clut)),
             rez_data("icl4", rid, name, four_bit(img)),
         ]
-    with open(REZ_OUT, "w", newline="\n") as f:
-        f.write("\n".join(parts))
+    write_file(REZ_OUT, parts)
 
 
-def write_previews(large, small):
+def write_app_rez(apps):
+    for name, (large, small) in apps.items():
+        write_file(os.path.join(HERE, "..", name + ".r"),
+                   [HEADER] + icon_family(name, large, small))
+
+
+def write_previews(large, small, apps):
     try:
         from PIL import Image
     except ImportError:
@@ -321,13 +420,21 @@ def write_previews(large, small):
         x += 48
     sheet.save(os.path.join(PREVIEW_DIR, "sheet.png"))
 
+    for name, (l, sm) in apps.items():
+        stem = name[:-len("Icons")].lower()
+        big(to_image(l), 8).save(os.path.join(PREVIEW_DIR, "app-%s.png" % stem))
+        big(to_image(sm), 8).save(os.path.join(PREVIEW_DIR, "app-%s-small.png" % stem))
+
 
 def main():
     large = [draw_large(0), draw_large(1)]
     small = draw_small()
+    apps = {name: (draw_app(32, lb), draw_app(16, sb))
+            for name, (lb, sb) in APPS.items()}
     write_rez(large, small)
-    write_previews(large, small)
-    print("wrote", os.path.normpath(REZ_OUT))
+    write_app_rez(apps)
+    write_previews(large, small, apps)
+    print("wrote", os.path.normpath(REZ_OUT), "and", ", ".join(n + ".r" for n in apps))
 
 
 if __name__ == "__main__":

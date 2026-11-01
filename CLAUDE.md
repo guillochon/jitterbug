@@ -45,8 +45,11 @@ makes the app supply a seed. See docs/PRIOR_ART.md before proposing designs.
 - `mac/` — Retro68 targets (only configured when a Retro68 toolchain is active).
   `mac/sdk/` is the public API apps copy in; `mac/demo/` (JitterbugDemo) is
   the push-button example of using it, `mac/jbtest/` the automated check.
-  `mac/resources/` holds the generated icon family; the app's creator code is
-  `JtBg` (`mac/CMakeLists.txt` and `mac/collector/collector.r` must agree).
+  `mac/resources/` holds the generated icon families (puzzle piece for the
+  extension, diamond app icons for the apps). Creator codes: extension and
+  seed file `JtBg`, Collector `JbCo`, Demo `JbDm`, Test `JbTs`; each app's
+  `.r` and `mac/CMakeLists.txt` must agree, and apps must not share one (the
+  Finder picks icons by creator and type).
   Retro68 never sets the Finder bundle bit; `scripts/mac-set-bundle-bit.py`
   does it after each build.
 - `docs/` — architecture, entropy policy, simulation, prior art.

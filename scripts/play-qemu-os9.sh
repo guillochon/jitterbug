@@ -12,8 +12,8 @@
 # builds play.img through this script and boots it in native Windows QEMU.
 #
 # play.img is a copy of the base disk made by `test-qemu-os9.sh install`, with
-# the Jitterbug extension in Extensions and JitterbugDemo + JitterbugTest in a
-# "Jitterbug" folder on the disk. --fresh also refreshes them from the build dirs.
+# the Jitterbug extension in Extensions and JitterbugDemo + JitterbugTest on
+# the desktop. --fresh also refreshes them from the build dirs.
 # There is no AutoTest marker, so nothing shuts the guest down for you.
 # Click in the window to capture the mouse; Ctrl+Alt+G releases it.
 # Emulator timing is never entropy evidence (CLAUDE.md rule 3).
@@ -48,9 +48,8 @@ if ((fresh)) || [[ ! -f "$PLAY" ]]; then
     export HOME="$(mktemp -d)"   # hfsutils keeps its mount state in $HOME/.hcwd
     hmount "$PLAY" >/dev/null
     hcopy -m "$INIT" ':System Folder:Extensions:Jitterbug'
-    hmkdir ':Jitterbug'
-    hcopy -m "$APPS/JitterbugDemo.bin" ':Jitterbug:JitterbugDemo'
-    hcopy -m "$APPS/JitterbugTest.bin" ':Jitterbug:JitterbugTest'
+    hcopy -m "$APPS/JitterbugDemo.bin" ':Desktop Folder:JitterbugDemo'
+    hcopy -m "$APPS/JitterbugTest.bin" ':Desktop Folder:JitterbugTest'
     humount
 fi
 

@@ -1,13 +1,15 @@
 /*
  * Finder resources for JitterbugCollector: owner resource, bundle and file
- * reference so the Finder shows the Jitterbug icon family (ID 128, from
- * mac/resources/JitterbugIcons.r) on the application.
+ * reference so the Finder shows its application icon (family 128, from
+ * mac/resources/CollectorIcons.r).
  *
+ * Each Jitterbug app has its own creator code, because the Finder picks
+ * icons by creator and type: apps sharing one would share one icon.
  * JB_CREATOR must match CREATOR in mac/CMakeLists.txt.
  */
 #include "Finder.r"
 
-#define JB_CREATOR 'JtBg'
+#define JB_CREATOR 'JbCo'
 
 /* Owner (signature) resource; the Finder only needs it to exist. */
 data JB_CREATOR (0, "Owner resource") {
